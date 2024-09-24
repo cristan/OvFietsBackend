@@ -32,6 +32,19 @@ def write_combined_json():
         json.dump(combined_data, json_file, ensure_ascii=False, indent=4)
     print(f"Combined JSON saved to {file_path}")
 
+# Only return the fields useful for the overview call
+def get_useful_data(entry):
+    useful = {}
+    useful['description'] = entry.get('description')
+    useful['stationCode'] = entry.get('stationCode')
+    useful['lat'] = entry.get('lat')
+    useful['lng'] = entry.get('lng')
+    useful['extra'] = {}
+    useful['extra']['locationCode'] = entry['extra']['locationCode']
+    useful['extra']['fetchTime'] = entry['extra']['fetchTime']
+    useful['openingHours'] = entry.get('openingHours')
+    return useful
+
 # Loop to handle receiving messages
 while True:
     try:
@@ -56,11 +69,11 @@ while True:
                     # Get the location code from the topic (e.g., eml001 from /OVfiets/EML/eml001)
                     location_code = topic_received.split("/")[-1]
 
-                    # Add or update the location data in the combined dictionary
-                    combined_data["locaties"][location_code] = json_data
-
                     # Log a one-liner when JSON is received
                     print(f"Received JSON for location: {location_code}")
+
+                    # Add or update the location data in the combined dictionary
+                    combined_data["locaties"][location_code] = get_useful_data(json_data)
 
                 except (OSError, json.JSONDecodeError):
                     print(f"Received non-compressed or non-JSON message")
@@ -73,6 +86,7 @@ while True:
                 break
 
         # Write the accumulated data to the JSON file
+        # TODO: filter out old entries
         write_combined_json()
 
     except KeyboardInterrupt:
