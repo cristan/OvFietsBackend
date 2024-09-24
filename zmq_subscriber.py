@@ -29,7 +29,7 @@ combined_data = {"locaties": {}}
 def write_combined_json():
     file_path = os.path.join(base_directory, "combined_data.json")
     with open(file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(combined_data, json_file, ensure_ascii=False, indent=4)
+        json.dump(combined_data, json_file, ensure_ascii=False)
     print(f"Combined JSON saved to {file_path}")
 
 # Only return the fields useful for the overview call
