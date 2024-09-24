@@ -2,6 +2,7 @@ import zmq
 import gzip
 import json
 import os
+import time
 
 # Create a ZeroMQ context
 context = zmq.Context()
@@ -22,15 +23,35 @@ print(f"Subscribed to topic: {topic}")
 base_directory = "OVfiets"
 os.makedirs(base_directory, exist_ok=True)
 
-# Initialize a dictionary to accumulate the data
-combined_data = {"locaties": {}}
+# A dictionary to accumulate the data
+combined_data = {}
 
 # Function to write the accumulated data to a file
 def write_combined_json():
     file_path = os.path.join(base_directory, "combined_data.json")
+
+    to_write = list(combined_data.values())
+
     with open(file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(combined_data, json_file, ensure_ascii=False)
+        json.dump(to_write, json_file, ensure_ascii=False)
     print(f"Combined JSON saved to {file_path}")
+
+def filter_old_entries():
+    twoWeeksAgo = int(time.time()) - (14 * 24 * 60 * 60)
+
+    # Collect keys to remove (can't modify dict while iterating)
+    keys_to_remove = []
+
+    for location_code, data in combined_data.items():
+        fetch_time = data["extra"].get("fetchTime")
+
+        if fetch_time < twoWeeksAgo:
+            keys_to_remove.append(location_code)
+
+    # Remove the old entries
+    for key in keys_to_remove:
+        del combined_data[key]
+        print(f"Removed old location data: {key}")    
 
 # Only return the fields useful for the overview call
 def get_useful_data(entry):
@@ -73,7 +94,7 @@ while True:
                     print(f"Received JSON for location: {location_code}")
 
                     # Add or update the location data in the combined dictionary
-                    combined_data["locaties"][location_code] = get_useful_data(json_data)
+                    combined_data[location_code] = get_useful_data(json_data)
 
                 except (OSError, json.JSONDecodeError):
                     print(f"Received non-compressed or non-JSON message")
@@ -85,8 +106,7 @@ while True:
                 # No more messages available
                 break
 
-        # Write the accumulated data to the JSON file
-        # TODO: filter out old entries
+        filter_old_entries()
         write_combined_json()
 
     except KeyboardInterrupt:
