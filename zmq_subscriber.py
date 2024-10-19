@@ -3,6 +3,7 @@ import gzip
 import json
 import os
 import time
+from google.cloud import storage
 
 # Create a ZeroMQ context
 context = zmq.Context()
@@ -26,7 +27,6 @@ os.makedirs(base_directory, exist_ok=True)
 # A dictionary to accumulate the data
 combined_data = {}
 
-# Function to write the accumulated data to a file
 def write_combined_json():
     file_path = os.path.join(base_directory, "combined_data.json")
 
@@ -35,6 +35,15 @@ def write_combined_json():
     with open(file_path, 'w', encoding='utf-8') as json_file:
         json.dump(to_write, json_file, ensure_ascii=False)
     print(f"Combined JSON saved to {file_path}")
+
+def upload_to_gcs(source_file_name, destination_blob_name):
+    client = storage.Client()
+    bucket_name = os.getenv("PUBLIC_BUCKET_NAME")
+    print(f"Uploading {source_file_name} to {destination_blob_name} in bucket {bucket_name}.")
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(source_file_name)
+    print(f"File {source_file_name} uploaded to {destination_blob_name}.")
 
 def filter_old_entries():
     twoWeeksAgo = int(time.time()) - (14 * 24 * 60 * 60)
@@ -108,6 +117,7 @@ while True:
 
         filter_old_entries()
         write_combined_json()
+        upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
 
     except KeyboardInterrupt:
         print("Interrupted")
