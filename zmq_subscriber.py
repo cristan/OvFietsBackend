@@ -39,7 +39,7 @@ def write_combined_json():
 def upload_to_gcs(source_file_name, destination_blob_name):
     client = storage.Client()
     bucket_name = os.getenv("PUBLIC_BUCKET_NAME")
-    print(f"Uploading {source_file_name} to {destination_blob_name} in bucket {bucket_name}.")
+    print(f"Uploading {source_file_name} to bucket {bucket_name} as {destination_blob_name}.")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
     blob.upload_from_filename(source_file_name)
