@@ -32,11 +32,9 @@ resource "google_compute_instance" "python_vm" {
     }
   }
 
-  metadata = {
-    PUBLIC_BUCKET_NAME = var.public_bucket_name
-  }
-
   metadata_startup_script = <<-EOF
+PUBLIC_BUCKET_NAME=${var.public_bucket_name}
+export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip
 pip3 install --upgrade pip
@@ -44,9 +42,9 @@ pip3 install zmq
 pip3 install google-cloud-storage
 
 gsutil cp gs://${var.sources_bucket_name}/zmq_subscriber.py ~
-nohup python3 ~/zmq_subscriber.py
+nohup python3 ~/zmq_subscriber.py &
 EOF
-
+# nohup python3 ~/zmq_subscriber.py > /var/log/zmq_subscriber.log 2>&1 &
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_reading_source_bucket" {
