@@ -69,6 +69,8 @@ def get_useful_data(entry):
     useful['stationCode'] = entry.get('stationCode')
     useful['lat'] = entry.get('lat')
     useful['lng'] = entry.get('lng')
+    useful['link'] = {}
+    useful['link']['uri'] = entry['link']['uri']
     useful['extra'] = {}
     useful['extra']['locationCode'] = entry['extra']['locationCode']
     useful['extra']['fetchTime'] = entry['extra']['fetchTime']
