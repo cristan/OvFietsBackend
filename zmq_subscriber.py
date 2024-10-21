@@ -74,6 +74,7 @@ def get_useful_data(entry):
     useful['extra'] = {}
     useful['extra']['locationCode'] = entry['extra']['locationCode']
     useful['extra']['fetchTime'] = entry['extra']['fetchTime']
+    useful['extra']['rentalBikes'] = entry['extra']['rentalBikes']
     useful['openingHours'] = entry.get('openingHours')
     return useful
 
