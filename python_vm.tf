@@ -31,18 +31,18 @@ resource "google_compute_instance" "python_vm" {
       # Ephemeral IP
     }
   }
-
-  provisioner "file" {
-    source      = "zmq_subscriber.py"
-    destination = "/usr/local/bin/"
-  }
-
+  
   metadata_startup_script = <<-EOF
 apt-get update
 apt-get install -y python3 python3-pip
 pip3 install --upgrade pip
 pip3 install zmq
 EOF
+
+  provisioner "file" {
+    source      = "zmq_subscriber.py"
+    destination = "/usr/local/bin/"
+  }
 
 provisioner "remote-exec" {
     inline = [
