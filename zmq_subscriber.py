@@ -104,6 +104,7 @@ while True:
 
                     # Log a one-liner when JSON is received
                     print(f"Received JSON for location: {location_code}")
+                    # print(f"JSON: {json_data}")
 
                     # Sometimes we don't get the amount of bikes. Don't bother with these entries.
                     if 'rentalBikes' in json_data['extra']:
