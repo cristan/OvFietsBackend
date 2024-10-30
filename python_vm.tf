@@ -42,6 +42,8 @@ resource "google_compute_instance" "python_vm" {
   }
   
   metadata_startup_script = <<-EOF
+PUBLIC_BUCKET_NAME=${var.public_bucket_name}
+export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip
 pip3 install --upgrade pip
