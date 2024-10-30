@@ -74,7 +74,7 @@ def get_useful_data(entry):
     useful['extra'] = {}
     useful['extra']['locationCode'] = entry['extra']['locationCode']
     useful['extra']['fetchTime'] = entry['extra']['fetchTime']
-    useful['extra']['rentalBikes'] = entry['extra']['rentalBikes']
+    useful['extra']['rentalBikes'] = entry['extra'].get('rentalBikes', None)
     useful['openingHours'] = entry.get('openingHours')
     return useful
 
@@ -105,8 +105,9 @@ while True:
                     # Log a one-liner when JSON is received
                     print(f"Received JSON for location: {location_code}")
 
-                    # Add or update the location data in the combined dictionary
-                    combined_data[location_code] = get_useful_data(json_data)
+                    # Sometimes we don't get the amount of bikes. Don't bother with these entries.
+                    if 'rentalBikes' in json_data['extra']:
+                        combined_data[location_code] = get_useful_data(json_data)
 
                 except (OSError, json.JSONDecodeError):
                     print(f"Received non-compressed or non-JSON message")
