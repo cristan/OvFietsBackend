@@ -15,7 +15,7 @@ resource "google_compute_instance" "python_vm" {
   # Source: https://cloud.google.com/free/docs/free-cloud-features#compute
   # Let's pick us-east1 as it's the closed to the Netherlands
   zone         = "us-east1-b"
-  depends_on = [ google_storage_bucket.sources_bucket, google_service_account.python_vm_service_account ]
+  depends_on = [ google_service_account.python_vm_service_account ]
 
   metadata = {
     ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
