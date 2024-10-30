@@ -3,6 +3,11 @@ resource "google_service_account" "python_vm_service_account" {
   display_name = "Python VM service account"
 }
 
+resource "tls_private_key" "vm_ssh_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
 resource "google_compute_instance" "python_vm" {
   name         = "python-vm-instance"
   machine_type = "e2-micro"
@@ -11,6 +16,10 @@ resource "google_compute_instance" "python_vm" {
   # Let's pick us-east1 as it's the closed to the Netherlands
   zone         = "us-east1-b"
   depends_on = [ google_storage_bucket.sources_bucket, google_service_account.python_vm_service_account ]
+
+  metadata = {
+    ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
+  }
 
   boot_disk {
     initialize_params {
@@ -41,14 +50,26 @@ EOF
 
   provisioner "file" {
     source      = "zmq_subscriber.py"
-    destination = "/usr/local/bin/"
+    destination = "/home/debian/zmq_subscriber.py"
+    connection {
+      type        = "ssh"
+      user        = "debian"
+      private_key = tls_private_key.vm_ssh_key.private_key_pem
+      host        = self.network_interface[0].access_config[0].nat_ip
+    }
   }
 
 provisioner "remote-exec" {
     inline = [
-      "nohup python3 /usr/local/bin/zmq_subscriber.py &"
+      "nohup python3 /home/debian/zmq_subscriber.py &"
     ]
   }
+  connection {
+      type        = "ssh"
+      user        = "debian"
+      private_key = tls_private_key.vm_ssh_key.private_key_pem
+      host        = self.network_interface[0].access_config[0].nat_ip
+    }
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
