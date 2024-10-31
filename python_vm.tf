@@ -47,8 +47,7 @@ export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip
 pip3 install --upgrade pip
-pip3 install pyzmq
-pip3 install google-cloud-storage
+pip3 install pyzmq google-cloud-storage
 EOF
 
   provisioner "file" {
