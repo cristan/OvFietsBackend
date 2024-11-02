@@ -42,16 +42,27 @@ resource "google_compute_instance" "python_vm" {
   }
   
   metadata_startup_script = <<-EOF
+set -x  # Enable debugging
+exec > /var/log/startup-script.log 2>&1  # Redirect all output to this log file
+
+echo "Starting startup script"
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip
 pip3 install --upgrade pip
 pip3 install pyzmq google-cloud-storage
+
+echo "Finished running startup script. Running the script."
+
+# The > /dev/null 2>&1 part disables logs. This ensures /var/log/startup-script.log will only contain logs about the starting of the VM.
+nohup python3 /home/debian/zmq_subscriber.py > /dev/null 2>&1 &
 EOF
 
   provisioner "file" {
     source      = "zmq_subscriber.py"
+    # Note that the VM won't redeploy when this file changes, so for now, you need to for example manually delete your VM to deploy the changed file.
+    # The better solution is to separate the architecture from the code. PR's welcome.
     destination = "/home/debian/zmq_subscriber.py"
     connection {
       type        = "ssh"
@@ -60,18 +71,6 @@ EOF
       host        = self.network_interface[0].access_config[0].nat_ip
     }
   }
-
-provisioner "remote-exec" {
-    inline = [
-      "nohup python3 /home/debian/zmq_subscriber.py &"
-    ]
-  }
-  connection {
-      type        = "ssh"
-      user        = "debian"
-      private_key = tls_private_key.vm_ssh_key.private_key_pem
-      host        = self.network_interface[0].access_config[0].nat_ip
-    }
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
