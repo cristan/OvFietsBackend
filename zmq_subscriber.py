@@ -3,6 +3,7 @@ import gzip
 import json
 import os
 import time
+import threading
 from google.cloud import storage
 
 # Create a ZeroMQ context
@@ -60,7 +61,26 @@ def filter_old_entries():
     # Remove the old entries
     for key in keys_to_remove:
         del combined_data[key]
-        print(f"Removed old location data: {key}")    
+        print(f"Removed old location data: {key}")
+
+write_timer = None
+
+def save_and_upload():
+    write_combined_json()
+    upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
+    write_timer = None
+
+def save_and_upload_delayed():
+    # Make write_timer global so we can overwrite it.
+    global write_timer
+
+    # Cancel the current timer if it's already running
+    if write_timer is not None:
+        write_timer.cancel()
+
+    # Start a new timer for 1 second
+    write_timer = threading.Timer(1.0, save_and_upload)
+    write_timer.start()
 
 # Only return the fields useful for the overview call
 def get_useful_data(entry):
@@ -121,8 +141,7 @@ while True:
                 break
 
         filter_old_entries()
-        write_combined_json()
-        upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
+        save_and_upload_delayed()
 
     except KeyboardInterrupt:
         print("Interrupted")
