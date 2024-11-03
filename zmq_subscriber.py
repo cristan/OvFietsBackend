@@ -103,7 +103,7 @@ while True:
                     location_code = topic_received.split("/")[-1]
 
                     # Log a one-liner when JSON is received
-                    print(f"Received JSON for location: {location_code}")
+                    print(f"Received data for {location_code} with fetchTime {json_data['extra']['fetchTime']}")
                     # print(f"JSON: {json_data}")
 
                     # Sometimes we don't get the amount of bikes. Don't bother with these entries.
