@@ -85,7 +85,8 @@ def save_and_upload_delayed():
 # Only return the fields useful for the overview call
 def get_useful_data(entry):
     useful = {}
-    useful['description'] = entry.get('description')
+    # strip because Duiven has a space at the end of its description.
+    useful['description'] = entry.get('description').strip()
     useful['stationCode'] = entry.get('stationCode')
     useful['lat'] = entry.get('lat')
     useful['lng'] = entry.get('lng')
