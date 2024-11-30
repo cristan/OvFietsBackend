@@ -43,6 +43,7 @@ def upload_to_gcs(source_file_name, destination_blob_name):
     print(f"Uploading {source_file_name} to bucket {bucket_name} as {destination_blob_name}.")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
+    blob.cache_control = "no-cache, max-age=0"
     blob.upload_from_filename(source_file_name)
     print(f"File {source_file_name} uploaded to {destination_blob_name}.")
 
