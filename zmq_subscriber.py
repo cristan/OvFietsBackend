@@ -58,8 +58,9 @@ def filter_old_entries():
         del combined_data[key]
         print(f"Removed old location data: {key}")
 
-
+write_timer = None
 def save_and_upload():
+    global write_timer
     write_combined_json()
     upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
     write_timer = None
