@@ -43,34 +43,46 @@ resource "google_compute_instance" "python_vm" {
   
   metadata_startup_script = <<-EOF
 set -x  # Enable debugging
-exec > /var/log/startup-script.log 2>&1  # Redirect all output to this log file
+exec > /var/log/startup-script.log 2>&1 # Redirect all output to this log file
 
 echo "Starting startup script"
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
 apt-get update
-apt-get install -y python3 python3-pip
+apt-get install -y python3 python3-pip logrotate
 pip3 install --upgrade pip
 pip3 install pyzmq google-cloud-storage
 
 echo "Finished running startup script. Running the script."
 
-# The > /dev/null 2>&1 part disables logs. This ensures /var/log/startup-script.log will only contain logs about the starting of the VM.
-nohup python3 /home/debian/zmq_subscriber.py > /dev/null 2>&1 &
+# Use a different log file for the actual script
+exec > /var/log/zmq_subscriber.log 2>&1
+nohup python3 /home/debian/zmq_subscriber.py
 EOF
 
+  # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
+  # The better solution is to separate the architecture from the code. PR's welcome.
   provisioner "file" {
     source      = "zmq_subscriber.py"
-    # Note that the VM won't redeploy when this file changes, so for now, you need to for example manually delete your VM to deploy the changed file.
-    # The better solution is to separate the architecture from the code. PR's welcome.
     destination = "/home/debian/zmq_subscriber.py"
-    connection {
+  }
+
+  provisioner "file" {
+    source      = "logrotate/zmq_subscriber"
+    destination = "/home/debian/zmq_subscriber"
+  }
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mv /home/debian/zmq_subscriber /etc/logrotate.d/zmq_subscriber",
+    ]
+  }
+
+  connection {
       type        = "ssh"
       user        = "debian"
       private_key = tls_private_key.vm_ssh_key.private_key_pem
       host        = self.network_interface[0].access_config[0].nat_ip
     }
-  }
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
