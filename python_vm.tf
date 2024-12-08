@@ -74,6 +74,7 @@ EOF
   provisioner "remote-exec" {
     inline = [
       "sudo mv /home/debian/zmq_subscriber /etc/logrotate.d/zmq_subscriber",
+      "sudo chown root:root /etc/logrotate.d/zmq_subscriber",
     ]
   }
 
