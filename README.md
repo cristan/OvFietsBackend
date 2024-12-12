@@ -3,10 +3,10 @@ This service fetches the latest OV-fiets data and makes it available via a REST 
 
 It pulls data from OpenOV, but with a few perks over directly using http://fiets.openov.nl/locaties.json:
 
-- Automatically removes outdated entries
-- Only the essential info for quick overviews (for details, you can follow the provided link)
-- Data is delivered as a simple array, instead of a map with unnecessary IDs
 - Is hosted over HTTPS
+- Automatically removes outdated entries
+- Half its size because it only hosts info needed for overviews + a detail link
+- Data is delivered as a simple array, instead of a map with IDs
 
 Also, OpenOV isn’t thrilled about heavy traffic on their JSON (they provide open data, not hosting). They’d rather you use the ZeroMQ service bus and host it yourself, which is exactly what this project does.
 
