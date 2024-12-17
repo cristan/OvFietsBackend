@@ -63,12 +63,12 @@ EOF
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
   # The better solution is to separate the architecture from the code. PR's welcome.
   provisioner "file" {
-    source      = "zmq_subscriber.py"
+    source      = "vm/zmq_subscriber.py"
     destination = "/home/debian/zmq_subscriber.py"
   }
 
   provisioner "file" {
-    source      = "logrotate/zmq_subscriber"
+    source      = "vm/logrotate/zmq_subscriber"
     destination = "/home/debian/zmq_subscriber"
   }
   provisioner "remote-exec" {
