@@ -15,7 +15,7 @@ resource "google_compute_instance" "python_vm" {
   # Source: https://cloud.google.com/free/docs/free-cloud-features#compute
   # Let's pick us-east1 as it's the closed to the Netherlands
   zone         = "us-east1-b"
-  depends_on = [ google_service_account.python_vm_service_account ]
+  depends_on = [ google_service_account.python_vm_service_account, google_compute_firewall.allow_http ]
 
   metadata = {
     ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
@@ -49,7 +49,7 @@ echo "Starting startup script"
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
 apt-get update
-apt-get install -y python3 python3-pip logrotate
+apt-get install -y python3 python3-pip nginx logrotate
 pip3 install --upgrade pip
 pip3 install pyzmq google-cloud-storage
 
@@ -83,7 +83,9 @@ EOF
       user        = "debian"
       private_key = tls_private_key.vm_ssh_key.private_key_pem
       host        = self.network_interface[0].access_config[0].nat_ip
-    }
+  }
+
+  tags = ["http-server"]
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
@@ -93,4 +95,18 @@ resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
   members = [
     "serviceAccount:${google_service_account.python_vm_service_account.email}"
   ]
+}
+
+resource "google_compute_firewall" "allow_http" {
+  name    = "allow-http"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
+  direction = "INGRESS"
+  source_ranges = ["0.0.0.0/0"]
+  target_tags = ["http-server"]
 }
