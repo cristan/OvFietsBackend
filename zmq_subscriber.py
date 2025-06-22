@@ -4,14 +4,21 @@ import json
 import os
 import time
 import threading
+from typing import Dict
+from datetime import datetime
 from google.cloud import storage
+from google.cloud import firestore
 
 # Directory to store the final JSON
 base_directory = "OVfiets"
 os.makedirs(base_directory, exist_ok=True)
 
-# A dictionary to accumulate the data
+db = firestore.Client()
+flush_lock = threading.Lock()
+
 combined_data = {}
+capacity_cache = {}
+pending_updates = {}
 
 def create_socket(context):
     """
@@ -63,6 +70,7 @@ def save_and_upload():
     global write_timer
     write_combined_json()
     upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
+    flush_pending_updates()
     write_timer = None
 
 def save_and_upload_delayed():
@@ -83,7 +91,8 @@ def get_useful_data(entry):
         'extra': {
             'locationCode': entry['extra']['locationCode'],
             'fetchTime': entry['extra']['fetchTime'],
-            'rentalBikes': entry['extra'].get('rentalBikes', None)
+            # Not always present, but we filter out entries without it beforehand
+            'rentalBikes': entry['extra']['rentalBikes']
         },
         'openingHours': entry.get('openingHours')
     }
@@ -103,16 +112,82 @@ def receive_messages(socket):
             print(f"Received data for {location_code} with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
                 combined_data[location_code] = get_useful_data(json_data)
+                handle_capacity(location_code, json_data['extra']['rentalBikes'])
             
             topic_received = socket.recv_string(flags=zmq.NOBLOCK)
         except zmq.Again:
             # No more messages available
             return
 
+def get_current_month() -> str:
+    return datetime.utcnow().strftime("%Y-%m")  # e.g., "2025-06"
+
+def load_monthly_capacity_cache() -> Dict[str, dict]:
+    current_month = get_current_month()
+    snapshot = db.collection("monthly_location_stats") \
+        .where("month", "==", current_month) \
+        .get()
+
+    cache = {}
+    for doc in snapshot:
+        data = doc.to_dict()
+        cache[data["code"]] = data  # min, max, month, etc.
+
+    print(f"Loaded {len(cache)} documents into capacity cache.")
+    return cache
+
+def handle_capacity(code: str, capacity: int):
+    current_month = get_current_month()
+    existing = capacity_cache.get(code)
+
+    if existing is None:
+        # First update for this code – force write
+        new_min = new_max = capacity
+    else:
+        old_min = existing["min"]
+        old_max = existing["max"]
+
+        # Not more or less than the previous min and max: skip.
+        if old_min <= capacity <= old_max:
+            return
+
+        new_min = min(old_min, capacity)
+        new_max = max(old_max, capacity)
+
+    updated = {
+        "code": code,
+        "month": current_month,
+        "min": new_min,
+        "max": new_max,
+    }
+
+    with flush_lock:
+        capacity_cache[code] = updated
+        pending_updates[code] = updated
+
+    print(f"[{code}] Queued update: {new_min}–{new_max}")
+
+def flush_pending_updates():
+    with flush_lock:
+        if not pending_updates:
+            return
+
+        batch = db.batch()
+        for code, data in pending_updates.items():
+            doc_id = f"{code}_{data['month']}"
+            ref = db.collection("monthly_location_stats").document(doc_id)
+            batch.set(ref, data)
+
+        batch.commit()
+        print(f"✅ Flushed {len(pending_updates)} document(s) at {datetime.utcnow().isoformat()}")
+
+        pending_updates.clear()
+
 # Main loop
 try:
     context = zmq.Context()
     socket = create_socket(context)
+    capacity_cache = load_monthly_capacity_cache()
     while True:
         try:
             receive_messages(socket)

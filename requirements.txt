@@ -1,2 +1,3 @@
 pyzmq
 google-cloud-storage
+google-cloud-firestore

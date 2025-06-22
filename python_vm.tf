@@ -51,7 +51,7 @@ export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip logrotate
 pip3 install --upgrade pip
-pip3 install pyzmq google-cloud-storage
+pip3 install pyzmq google-cloud-storage google-cloud-firestore
 
 echo "Finished running startup script. Running the script."
 
@@ -71,6 +71,7 @@ EOF
     source      = "logrotate/zmq_subscriber"
     destination = "/home/debian/zmq_subscriber"
   }
+
   provisioner "remote-exec" {
     inline = [
       "sudo mv /home/debian/zmq_subscriber /etc/logrotate.d/zmq_subscriber",
@@ -93,4 +94,10 @@ resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
   members = [
     "serviceAccount:${google_service_account.python_vm_service_account.email}"
   ]
+}
+
+resource "google_project_iam_member" "allow_vm_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.python_vm_service_account.email}"
 }
