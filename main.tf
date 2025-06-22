@@ -1,5 +1,7 @@
 provider "google" {
   project     = var.project_id
+  # Cloud Storage and Compute Engine are only in the free tier in us-east1 (South Carolina), us-central1 (Iowa) or us-west1 (Oregon).
+  # Picked us-east1 as the default
   region      = "us-east1"
 }
 
