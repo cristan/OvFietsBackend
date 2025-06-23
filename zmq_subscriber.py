@@ -109,7 +109,7 @@ def receive_messages(socket):
             message_str = decompressed_message.decode('utf-8')
             json_data = json.loads(message_str)
             location_code = topic_received.split("/")[-1]
-            print(f"Received data for {location_code} with fetchTime {json_data['extra']['fetchTime']}")
+            print(f"[{location_code}]: received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
                 combined_data[location_code] = get_useful_data(json_data)
                 handle_capacity(location_code, json_data['extra']['rentalBikes'])
@@ -131,7 +131,9 @@ def load_monthly_capacity_cache() -> Dict[str, dict]:
     cache = {}
     for doc in snapshot:
         data = doc.to_dict()
-        cache[data["code"]] = data  # min, max, month, etc.
+        code = data["code"]
+        print(f"[{code}]: Loaded from cache month: {data['month']}, min: {data['min']}, max: {data['max']}")
+        cache[code] = data
 
     print(f"Loaded {len(cache)} documents into capacity cache.")
     return cache
