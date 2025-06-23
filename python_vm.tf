@@ -85,7 +85,7 @@ EOF
       user        = "debian"
       private_key = tls_private_key.vm_ssh_key.private_key_pem
       host        = self.network_interface[0].access_config[0].nat_ip
-    }
+  }
 }
 
 resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {

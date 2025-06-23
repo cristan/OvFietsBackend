@@ -1,7 +1,7 @@
 provider "google" {
   project     = var.project_id
-  # Cloud Storage and Compute Engine are only in the free tier in us-east1 (South Carolina), us-central1 (Iowa) or us-west1 (Oregon).
-  # Picked us-east1 as the default
+  # I honestly don't know what this does, as you have to specify a region everywhere anyway.
+  # Picked the same region as our python_vm instance is located.
   region      = "us-east1"
 }
 
