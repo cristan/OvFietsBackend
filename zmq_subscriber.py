@@ -112,7 +112,7 @@ def receive_messages(socket):
             print(f"[{location_code}]: received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
                 combined_data[location_code] = get_useful_data(json_data)
-                handle_capacity(location_code, json_data['extra']['rentalBikes'])
+                handle_capacity(location_code, int(json_data['extra']['rentalBikes']))
             
             topic_received = socket.recv_string(flags=zmq.NOBLOCK)
         except zmq.Again:
