@@ -46,6 +46,10 @@ set -x  # Enable debugging
 exec > /var/log/startup-script.log 2>&1 # Redirect all output to this log file
 
 echo "Starting startup script"
+
+# Disable man updating to remove the slow "Processing triggers for man-db"
+sudo sudo rm -f /var/lib/man-db/auto-update
+
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
 apt-get update
