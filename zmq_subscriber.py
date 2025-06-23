@@ -109,7 +109,7 @@ def receive_messages(socket):
             message_str = decompressed_message.decode('utf-8')
             json_data = json.loads(message_str)
             location_code = topic_received.split("/")[-1]
-            print(f"[{location_code}] received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
+            print(f"[{location_code}] Received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
                 combined_data[location_code] = get_useful_data(json_data)
                 handle_capacity(location_code, int(json_data['extra']['rentalBikes']))
@@ -151,7 +151,6 @@ def handle_capacity(code: str, capacity: int):
 
         # Not more or less than the previous min and max: skip.
         if old_min <= capacity <= old_max:
-            print(f"[{code}] No update persisted because {old_min} <= {capacity} <= {old_max}")
             return
 
         new_min = min(old_min, capacity)
@@ -168,7 +167,7 @@ def handle_capacity(code: str, capacity: int):
         capacity_cache[code] = updated
         pending_updates[code] = updated
 
-    print(f"[{code}] Queued update: {new_min}–{new_max}")
+    print(f"[{code}] Queued update with min: {new_min}, max: {new_max}")
 
 def flush_pending_updates():
     with flush_lock:
