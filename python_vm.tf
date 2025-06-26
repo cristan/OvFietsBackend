@@ -73,6 +73,16 @@ EOF
   }
 
   provisioner "file" {
+    source      = "firestore_history.py"
+    destination = "/home/debian/firestore_history.py"
+  }
+
+  provisioner "file" {
+    source      = "overview_bucket.py"
+    destination = "/home/debian/overview_bucket.py"
+  }
+
+  provisioner "file" {
     source      = "logrotate/zmq_subscriber"
     destination = "/home/debian/zmq_subscriber"
   }
