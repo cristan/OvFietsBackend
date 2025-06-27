@@ -2,7 +2,8 @@ import gzip
 import json
 import time
 import zmq
-from firestore_history import load_monthly_capacity_cache, history_set_capacity, flush_pending_updates
+from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
+    track_hourly_capacity
 from overview_bucket import filter_old_entries, write_and_upload_to_gcs, overview_set_capacity
 import threading
 
@@ -32,8 +33,11 @@ def receive_messages(socket):
             print(f"[{location_code}] Received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
                 overview_set_capacity(location_code, json_data)
-                history_set_capacity(location_code, int(json_data['extra']['rentalBikes']))
-            
+
+                capacity = int(json_data['extra']['rentalBikes'])
+                track_historic_capacity(location_code, capacity)
+                track_hourly_capacity(location_code, capacity)
+
             topic_received = socket.recv_string(flags=zmq.NOBLOCK)
         except zmq.Again:
             # No more messages available
