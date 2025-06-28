@@ -12,3 +12,26 @@ resource "google_firestore_field" "hourly_capacity_ttl" {
   field       = "ttl"
   ttl_config { }
 }
+
+resource "google_firebaserules_ruleset" "firestore_rules" {
+  project = var.project_id
+  provider    = google-beta
+
+  source {
+    files {
+      name    = "firestore.rules"
+      content = file("firestore.rules")
+    }
+  }
+
+  depends_on = [
+    google_firestore_database.default
+  ]
+}
+
+// Needs a terraform/tofu import to overwrite the default one. Change imports.tf to get this to work.
+resource "google_firebaserules_release" "firestore_release" {
+  name         = "cloud.firestore"
+  project      = var.project_id
+  ruleset_name = google_firebaserules_ruleset.firestore_rules.name
+}
