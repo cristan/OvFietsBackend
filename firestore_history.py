@@ -1,6 +1,5 @@
 import threading
 from typing import Dict
-from datetime import datetime
 from google.cloud import firestore
 from datetime import datetime, timedelta
 
@@ -10,13 +9,36 @@ flush_lock = threading.Lock()
 historic_capacity_cache = {}
 pending_historic_updates = {}
 
-hourly_min_cache = {}
+hourly_first_seen_cache = {} # code => the last hour for which we have set `min`: the first value we have received for this location
 pending_hourly_updates = {}
+
+def load_latest_hours_per_code():
+    print("Loading hourly capacity cache")
+    snapshot = db.collection("hourly_location_capacity").stream()
+
+    latest_per_code: Dict[str, str] = {}
+
+    for doc in snapshot:
+        data = doc.to_dict()
+        code = data.get("code")
+        hour = data.get("hour")
+
+        if not code or not hour:
+            continue  # skip incomplete docs
+
+        # Keep only the latest hour per code
+        if code not in latest_per_code or hour > latest_per_code[code]:
+            latest_per_code[code] = hour
+
+    global hourly_first_seen_cache
+    hourly_first_seen_cache = latest_per_code
+    print(f"Loaded {len(latest_per_code)} entries into hourly_first_seen_cache.")
 
 def get_current_month() -> str:
     return datetime.utcnow().strftime("%Y-%m")  # e.g., "2025-06"
 
-def load_monthly_capacity_cache() -> Dict[str, dict]:
+def load_monthly_capacity_cache():
+    print("Loading monthly capacity cache")
     current_month = get_current_month()
     snapshot = db.collection("monthly_location_stats") \
         .where("month", "==", current_month) \
@@ -29,8 +51,9 @@ def load_monthly_capacity_cache() -> Dict[str, dict]:
         print(f"[{code}] Loaded from cache | month: {data['month']} | min: {data['min']} | max: {data['max']}")
         cache[code] = data
 
+    global historic_capacity_cache
+    historic_capacity_cache = cache
     print(f"Loaded {len(cache)} documents into capacity cache.")
-    return cache
 
 def track_historic_capacity(code: str, capacity: int):
     current_month = get_current_month()
@@ -65,24 +88,26 @@ def track_historic_capacity(code: str, capacity: int):
 
 def track_hourly_capacity(code: str, capacity: int):
     now = datetime.utcnow()
-    hour_key = now.strftime("%Y-%m-%dT%H")
+    hour_key = now.strftime("%Y-%m-%dT%H")  # e.g., 2025-06-28T14
+
+    # Only write if we haven’t written for this code during this hour
+    previous_hour = hourly_first_seen_cache.get(code)
+    if previous_hour == hour_key:
+        return
+
+    hourly_first_seen_cache[code] = hour_key
+
     ttl = now + timedelta(days=8)
+    doc_id = f"{code}_{hour_key}"
 
-    previous = hourly_min_cache.get(code)
+    pending_hourly_updates[doc_id] = {
+        "code": code,
+        "hour": hour_key,
+        "first": capacity,
+        "ttl": ttl,
+    }
 
-    if (previous is None or
-            previous["hour"] != hour_key or
-            capacity < previous["min"]):
-
-        hourly_min_cache[code] = {"hour": hour_key, "min": capacity}
-
-        doc_id = f"{code}_{hour_key}"
-        pending_hourly_updates[doc_id] = {
-            "code": code,
-            "hour": hour_key,
-            "ttl": ttl,
-            "min": capacity,
-        }
+    print(f"[{code}] ⏱ First hourly capacity logged: {capacity} for hour {hour_key} at {now}")
 
 def flush_pending_updates():
     with flush_lock:

@@ -3,7 +3,7 @@ import json
 import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
-    track_hourly_capacity
+    track_hourly_capacity, load_latest_hours_per_code
 from overview_bucket import filter_old_entries, write_and_upload_to_gcs, overview_set_capacity
 import threading
 
@@ -62,6 +62,7 @@ try:
     context = zmq.Context()
     socket = create_socket(context)
     load_monthly_capacity_cache()
+    load_latest_hours_per_code()
     while True:
         try:
             receive_messages(socket)
