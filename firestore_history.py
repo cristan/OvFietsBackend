@@ -1,7 +1,7 @@
 import threading
 from typing import Dict
 from google.cloud import firestore
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 db = firestore.Client()
 flush_lock = threading.Lock()
@@ -87,8 +87,8 @@ def track_historic_capacity(code: str, capacity: int):
     print(f"[{code}] Queued monthly update with min: {new_min}, max: {new_max}")
 
 def track_hourly_capacity(code: str, capacity: int):
-    now = datetime.utcnow()
-    hour_key = now.strftime("%Y-%m-%dT%H")  # e.g., 2025-06-28T14
+    now = datetime.now(timezone.utc)
+    hour_key = now.strftime("%Y-%m-%dT%H")  # e.g., 2025-06-28T14 Note that this is UTC, not Dutch time!
 
     # Only write if we haven’t written for this code during this hour
     previous_hour = hourly_first_seen_cache.get(code)
@@ -105,6 +105,7 @@ def track_hourly_capacity(code: str, capacity: int):
         "hour": hour_key,
         "first": capacity,
         "ttl": ttl,
+        "timestamp": now,
     }
 
     print(f"[{code}] ⏱ First hourly capacity logged: {capacity} for hour {hour_key} at {now}")
