@@ -4,7 +4,7 @@ import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
     track_hourly_capacity, load_latest_hours_per_code
-from overview_bucket import filter_old_entries, write_and_upload_to_gcs, overview_set_capacity
+from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 
 def create_socket(context):
@@ -46,7 +46,7 @@ def receive_messages(socket):
 write_timer = None
 def save_and_upload():
     global write_timer
-    write_and_upload_to_gcs()
+    upload_combined_data()
     flush_pending_updates()
     write_timer = None
 

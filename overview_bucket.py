@@ -1,7 +1,5 @@
 import os
 import time
-import json
-from google.cloud import storage
 
 # Directory to store the final JSON
 base_directory = "OVfiets"
@@ -9,26 +7,38 @@ os.makedirs(base_directory, exist_ok=True)
 
 combined_data = {}
 
-def write_combined_json():
-    file_path = os.path.join(base_directory, "combined_data.json")
-    to_write = list(combined_data.values())
-    with open(file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(to_write, json_file, ensure_ascii=False)
-    print(f"Combined JSON saved to {file_path}")
+import io
+import gzip
+import json
+from google.cloud import storage
 
-def upload_to_gcs(source_file_name, destination_blob_name):
+def upload_gzipped_json(data, destination_blob_name):
     client = storage.Client()
     bucket_name = os.getenv("PUBLIC_BUCKET_NAME")
-    print(f"Uploading {source_file_name} to bucket {bucket_name} as {destination_blob_name}.")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
-    blob.cache_control = "no-cache, max-age=0"
-    blob.upload_from_filename(source_file_name)
-    print(f"File {source_file_name} uploaded to {destination_blob_name}.")
 
-def write_and_upload_to_gcs():
-    write_combined_json()
-    upload_to_gcs(base_directory+'/combined_data.json', 'locations.json')
+    # Convert the data to JSON
+    json_bytes = json.dumps(
+        list(data.values()), ensure_ascii=False
+    ).encode("utf-8")
+
+    # Gzip in memory
+    gzipped_buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=gzipped_buffer, mode="wb") as f_out:
+        f_out.write(json_bytes)
+    gzipped_buffer.seek(0)  # rewind to the beginning
+
+    # Upload to GCS
+    blob.cache_control = "no-cache, max-age=0"
+    blob.content_encoding = "gzip"
+    blob.content_type = "application/json"
+    blob.upload_from_file(gzipped_buffer, rewind=True)
+
+    print(f"Uploaded {destination_blob_name} to {bucket_name} (gzip-compressed)")
+
+def upload_combined_data():
+    upload_gzipped_json(combined_data, "locations.json")
 
 def filter_old_entries():
     twoWeeksAgo = int(time.time()) - (14 * 24 * 60 * 60)
