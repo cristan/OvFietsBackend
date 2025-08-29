@@ -1,4 +1,5 @@
 /var/log/zmq_subscriber.log {
     rotate 30
     daily
+    copytruncate
 }
