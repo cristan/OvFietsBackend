@@ -42,10 +42,8 @@ resource "google_compute_instance" "python_vm" {
   }
   
   metadata_startup_script = <<-EOF
-set -x  # Print the commands we're running for extra clarity
-exec > /var/log/startup-script.log 2>&1 # Redirect all output to this log file
-
 echo "Starting startup script"
+set -x  # Print the commands we're running for extra clarity
 
 # Disable man updating to remove the slow "Processing triggers for man-db"
 sudo rm -f /var/lib/man-db/auto-update
@@ -60,9 +58,8 @@ pip3 install pyzmq google-cloud-storage google-cloud-firestore
 
 echo "Finished running startup script. Running the script."
 
-# Use a different log file for the actual script
-exec > /var/log/zmq_subscriber.log 2>&1
-nohup python3 /home/debian/zmq_subscriber.py
+# Tag logs with the tag zmq_subscriber
+nohup python3 -u /home/debian/zmq_subscriber.py 2>&1 | logger -t zmq_subscriber &
 EOF
 
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
@@ -80,18 +77,6 @@ EOF
   provisioner "file" {
     source      = "overview_bucket.py"
     destination = "/home/debian/overview_bucket.py"
-  }
-
-  provisioner "file" {
-    source      = "logrotate/zmq_subscriber"
-    destination = "/home/debian/zmq_subscriber"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo mv /home/debian/zmq_subscriber /etc/logrotate.d/zmq_subscriber",
-      "sudo chown root:root /etc/logrotate.d/zmq_subscriber",
-    ]
   }
 
   connection {
