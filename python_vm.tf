@@ -42,7 +42,7 @@ resource "google_compute_instance" "python_vm" {
   }
   
   metadata_startup_script = <<-EOF
-set -x  # Enable debugging
+set -x  # Print the commands we're running for extra clarity
 exec > /var/log/startup-script.log 2>&1 # Redirect all output to this log file
 
 echo "Starting startup script"
