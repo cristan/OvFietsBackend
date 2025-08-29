@@ -5,6 +5,17 @@ provider "google" {
   region      = "us-east1"
 }
 
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "osconfig.googleapis.com",   # OS Config (VM Manager / OSPolicy)
+    "logging.googleapis.com",    # Cloud Logging
+    "monitoring.googleapis.com", # Cloud Monitoring
+  ])
+  project             = var.project_id
+  service             = each.key
+  disable_on_destroy  = false
+}
+
 resource "google_storage_bucket" "public_bucket" {
   name     = var.public_bucket_name
   location = "us-east1"

@@ -17,6 +17,10 @@ resource "google_compute_instance" "python_vm" {
   zone         = "us-east1-b"
   depends_on = [ google_service_account.python_vm_service_account ]
 
+  labels = {
+    ops-agent = "true"
+  }
+
   metadata = {
     ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
   }
