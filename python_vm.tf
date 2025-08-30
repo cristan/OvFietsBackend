@@ -45,26 +45,39 @@ resource "google_compute_instance" "python_vm" {
     }
   }
   
-  metadata_startup_script = <<-EOF
+  metadata_startup_script = <<-EOT
 echo "Starting startup script"
 set -x  # Print the commands we're running for extra clarity
 
 # Disable man updating to remove the slow "Processing triggers for man-db"
 sudo rm -f /var/lib/man-db/auto-update
 
-PUBLIC_BUCKET_NAME=${var.public_bucket_name}
-export PUBLIC_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-pip logrotate
 pip3 install --upgrade pip
 # TODO: Try pip install -r requirements.txt. This prevents having to note the dependencies twice.
 pip3 install pyzmq google-cloud-storage google-cloud-firestore
 
+cat > /etc/systemd/system/zmq_subscriber.service <<'EOF'
+[Unit]
+Description=ZMQ Subscriber
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u /home/debian/zmq_subscriber.py
+Environment=PUBLIC_BUCKET_NAME=${var.public_bucket_name}
+Restart=always
+User=debian
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "Finished running startup script. Running the script."
 
-# Tag logs with the tag zmq_subscriber
-nohup python3 -u /home/debian/zmq_subscriber.py 2>&1 | logger -t zmq_subscriber &
-EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now zmq_subscriber
+EOT
 
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
   # The better solution is to separate the architecture from the code. PR's welcome.
