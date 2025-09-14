@@ -68,22 +68,22 @@ EOF
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
   # The better solution is to separate the architecture from the code. PR's welcome.
   provisioner "file" {
-    source      = "zmq_subscriber.py"
+    source      = "vm_files/zmq_subscriber.py"
     destination = "/home/debian/zmq_subscriber.py"
   }
 
   provisioner "file" {
-    source      = "firestore_history.py"
+    source      = "vm_files/firestore_history.py"
     destination = "/home/debian/firestore_history.py"
   }
 
   provisioner "file" {
-    source      = "overview_bucket.py"
+    source      = "vm_files/overview_bucket.py"
     destination = "/home/debian/overview_bucket.py"
   }
 
   provisioner "file" {
-    source      = "logrotate/zmq_subscriber"
+    source      = "vm_files/logrotate/zmq_subscriber"
     destination = "/home/debian/zmq_subscriber"
   }
 
