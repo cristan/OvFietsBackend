@@ -58,12 +58,19 @@ def filter_old_entries():
         print(f"Removed old location data: {key}")
 
 def get_useful_data(entry):
-    return {
+    useful_data = {
         # strip because Duiven has a space at the end of its description.
         'description': entry.get('description', '').strip(),
         'stationCode': entry.get('stationCode'),
+
+        'city': entry.get('city'),
+        'postalCode': entry.get('postalCode'),
+        'street': entry.get('street'),
+        'houseNumber': entry.get('houseNumber'),
+
         'lat': entry.get('lat'),
         'lng': entry.get('lng'),
+
         'link': {'uri': entry['link']['uri']},
         'extra': {
             'locationCode': entry['extra']['locationCode'],
@@ -71,8 +78,21 @@ def get_useful_data(entry):
             # Not always present, but we filter out entries without it beforehand
             'rentalBikes': entry['extra']['rentalBikes']
         },
+        'infoImages': [
+            {
+                "title": img["title"],
+                "body": img["body"],
+            }
+            for img in entry.get("infoImages", [])
+            if img.get("title") != "Zelfservice huurlocatie"
+        ],
         'openingHours': entry.get('openingHours')
     }
+
+    if 'serviceType' in entry['extra']:
+        useful_data['extra']['serviceType'] = entry['extra']['serviceType']
+
+    return useful_data
 
 def overview_set_capacity(code, json_data):
     combined_data[code] = get_useful_data(json_data)
