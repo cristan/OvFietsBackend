@@ -56,7 +56,7 @@ apt-get update
 apt-get install -y python3 python3-pip logrotate
 pip3 install --upgrade pip
 # TODO: Try pip install -r requirements.txt. This prevents having to note the dependencies twice.
-pip3 install pyzmq google-cloud-storage google-cloud-firestore relativedelta
+pip3 install pyzmq google-cloud-storage google-cloud-firestore python-dateutil
 
 echo "Finished running startup script. Running the script."
 
