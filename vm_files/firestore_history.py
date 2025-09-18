@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import threading
 from typing import Dict
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
+from dateutil.relativedelta import relativedelta
 
 db = firestore.Client()
 flush_lock = threading.Lock()
 
+# code -> month -> stats
 historic_capacity_cache = {}
 pending_historic_updates = {}
 
@@ -34,22 +38,34 @@ def load_latest_hours_per_code():
     hourly_first_seen_cache = latest_per_code
     print(f"Loaded {len(latest_per_code)} entries into hourly_first_seen_cache.")
 
+def get_three_month_max(code: str) -> int:
+    months = get_recent_months(3)
+    code_data = historic_capacity_cache.get(code, {})
+    return max((code_data.get(m, {}).get("max", 0) for m in months), default=0)
+
+def get_recent_months(n=3, now: datetime | None = None):
+    now = now or datetime.utcnow()
+    return [
+        (now - relativedelta(months=i)).strftime("%Y-%m")
+        for i in range(n)
+    ]
+
 def get_current_month() -> str:
     return datetime.utcnow().strftime("%Y-%m")  # e.g., "2025-06"
 
 def load_monthly_capacity_cache():
     print("Loading monthly capacity cache")
-    current_month = get_current_month()
+    months = get_recent_months(3)
     snapshot = db.collection("monthly_location_stats") \
-        .where("month", "==", current_month) \
-        .get()
+        .where("month", "in", months) \
+        .stream()
 
     cache = {}
     for doc in snapshot:
         data = doc.to_dict()
         code = data["code"]
         print(f"[{code}] Loaded from cache | month: {data['month']} | min: {data['min']} | max: {data['max']}")
-        cache[code] = data
+        cache.setdefault(code, {})[data["month"]] = data
 
     global historic_capacity_cache
     historic_capacity_cache = cache
@@ -57,8 +73,11 @@ def load_monthly_capacity_cache():
 
 def track_historic_capacity(code: str, capacity: int):
     current_month = get_current_month()
-    existing = historic_capacity_cache.get(code)
 
+    if code not in historic_capacity_cache:
+        historic_capacity_cache[code] = {}
+
+    existing = historic_capacity_cache[code].get(current_month)
     if existing is None:
         # First update for this code – force write
         new_min = new_max = capacity
@@ -81,7 +100,7 @@ def track_historic_capacity(code: str, capacity: int):
     }
 
     with flush_lock:
-        historic_capacity_cache[code] = updated
+        historic_capacity_cache[code][current_month] = updated
         pending_historic_updates[code] = updated
 
     print(f"[{code}] Queued monthly update with min: {new_min}, max: {new_max}")
@@ -133,3 +152,10 @@ def flush_pending_updates():
 
         pending_historic_updates.clear()
         pending_hourly_updates.clear()
+
+def prune_old_months():
+    valid_months = set(get_recent_months(3))
+    for code in list(historic_capacity_cache.keys()):
+        for month in list(historic_capacity_cache[code].keys()):
+            if month not in valid_months:
+                del historic_capacity_cache[code][month]

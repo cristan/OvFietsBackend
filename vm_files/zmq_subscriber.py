@@ -3,7 +3,7 @@ import json
 import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
-    track_hourly_capacity, load_latest_hours_per_code
+    track_hourly_capacity, load_latest_hours_per_code, get_three_month_max, prune_old_months
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 
@@ -32,11 +32,12 @@ def receive_messages(socket):
             location_code = topic_received.split("/")[-1]
             print(f"[{location_code}] Received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
-                overview_set_capacity(location_code, json_data)
-
                 capacity = int(json_data['extra']['rentalBikes'])
                 track_historic_capacity(location_code, capacity)
                 track_hourly_capacity(location_code, capacity)
+
+                three_month_max = get_three_month_max(location_code)
+                overview_set_capacity(location_code, json_data, three_month_max)
 
             topic_received = socket.recv_string(flags=zmq.NOBLOCK)
         except zmq.Again:
@@ -48,6 +49,7 @@ def save_and_upload():
     global write_timer
     upload_combined_data()
     flush_pending_updates()
+    prune_old_months()
     write_timer = None
 
 def save_and_upload_delayed():

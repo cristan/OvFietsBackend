@@ -57,7 +57,7 @@ def filter_old_entries():
         del combined_data[key]
         print(f"Removed old location data: {key}")
 
-def get_useful_data(entry):
+def get_useful_data(entry, three_month_max):
     useful_data = {
         # strip because Duiven has a space at the end of its description.
         'description': entry.get('description', '').strip(),
@@ -86,7 +86,8 @@ def get_useful_data(entry):
             for img in entry.get("infoImages", [])
             if img.get("title") != "Zelfservice huurlocatie"
         ],
-        'openingHours': entry.get('openingHours')
+        'openingHours': entry.get('openingHours'),
+        'maxCapacity': three_month_max
     }
 
     if 'serviceType' in entry['extra']:
@@ -94,5 +95,5 @@ def get_useful_data(entry):
 
     return useful_data
 
-def overview_set_capacity(code, json_data):
-    combined_data[code] = get_useful_data(json_data)
+def overview_set_capacity(code, json_data, three_month_max):
+    combined_data[code] = get_useful_data(json_data, three_month_max)
