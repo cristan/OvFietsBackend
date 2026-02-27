@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Any
 
 # Directory to store the final JSON
 base_directory = "OVfiets"
@@ -12,7 +13,7 @@ import gzip
 import json
 from google.cloud import storage
 
-def upload_gzipped_json(data, destination_blob_name):
+def upload_gzipped_json(data, destination_blob_name: str):
     client = storage.Client()
     bucket_name = os.getenv("PUBLIC_BUCKET_NAME")
     bucket = client.bucket(bucket_name)
@@ -57,7 +58,7 @@ def filter_old_entries():
         del combined_data[key]
         print(f"Removed old location data: {key}")
 
-def get_useful_data(entry, three_month_max):
+def get_useful_data(entry: dict[str, Any], three_month_max: int) -> dict[str, Any]:
     useful_data = {
         # strip because Duiven has a space at the end of its description.
         'description': entry.get('description', '').strip(),
@@ -95,5 +96,5 @@ def get_useful_data(entry, three_month_max):
 
     return useful_data
 
-def overview_set_capacity(code, json_data, three_month_max):
+def overview_set_capacity(code: str, json_data: dict[str, Any], three_month_max: int):
     combined_data[code] = get_useful_data(json_data, three_month_max)

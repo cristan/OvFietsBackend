@@ -7,7 +7,7 @@ from firestore_history import load_monthly_capacity_cache, track_historic_capaci
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 
-def create_socket(context):
+def create_socket(context: zmq.Context) -> zmq.Socket:
     """
     Creates and returns a configured ZeroMQ SUB socket.
     """
@@ -19,7 +19,7 @@ def create_socket(context):
     socket.setsockopt_string(zmq.SUBSCRIBE, topic)
     return socket
 
-def receive_messages(socket):
+def receive_messages(socket: zmq.Socket):
     """
     Handle incoming messages on the given socket and update combined_data.
     """

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import threading
-from typing import Dict
+from typing import Any, Dict, Optional
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
@@ -43,7 +41,7 @@ def get_three_month_max(code: str) -> int:
     code_data = historic_capacity_cache.get(code, {})
     return max((code_data.get(m, {}).get("max", 0) for m in months), default=0)
 
-def get_recent_months(n=3, now: datetime | None = None):
+def get_recent_months(n: int = 3, now: Optional[datetime] = None) -> list[str]:
     now = now or datetime.utcnow()
     return [
         (now - relativedelta(months=i)).strftime("%Y-%m")
