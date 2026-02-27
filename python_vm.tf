@@ -61,7 +61,7 @@ pip3 install pyzmq google-cloud-storage google-cloud-firestore python-dateutil
 echo "Finished running startup script. Running the script."
 
 # Use a different log file for the actual script
-exec > /var/log/zmq_subscriber.log 2>&1
+exec >> /var/log/zmq_subscriber.log 2>&1
 nohup python3 /home/debian/zmq_subscriber.py
 EOF
 
