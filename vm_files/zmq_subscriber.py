@@ -13,6 +13,7 @@ def create_socket(context):
     """
     socket = context.socket(zmq.SUB)
     socket.connect("tcp://vid.openov.nl:6703")
+    socket.setsockopt(zmq.RCVTIMEO, 300000)  # 5 minute timeout
     topic = "/OVfiets"
     print(f"Subscribing to topic {topic}")
     socket.setsockopt_string(zmq.SUBSCRIBE, topic)
@@ -70,6 +71,12 @@ try:
             receive_messages(socket)
             filter_old_entries()
             save_and_upload_delayed()
+        except zmq.Again:
+            print("No data received for 5 minutes. Reconnecting.")
+            socket.close()
+            context.term()
+            context = zmq.Context()
+            socket = create_socket(context)
         except zmq.ZMQError:
             print("Connection lost. Retrying in 5 minutes.")
             socket.close()
