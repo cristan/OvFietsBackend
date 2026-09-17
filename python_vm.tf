@@ -52,11 +52,13 @@ sudo rm -f /var/lib/man-db/auto-update
 
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
+HISTORY_BUCKET_NAME=${var.history_bucket_name}
+export HISTORY_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-venv logrotate
 python3 -m venv /opt/venv
 # TODO: Try pip install -r requirements.txt. This prevents having to note the dependencies twice.
-/opt/venv/bin/pip install pyzmq google-cloud-storage google-cloud-firestore python-dateutil
+/opt/venv/bin/pip install pyzmq google-cloud-storage google-cloud-firestore python-dateutil pyarrow
 
 echo "Finished running startup script. Running the script."
 
@@ -80,6 +82,11 @@ EOF
   provisioner "file" {
     source      = "vm_files/overview_bucket.py"
     destination = "/home/debian/overview_bucket.py"
+  }
+
+  provisioner "file" {
+    source      = "vm_files/history_bucket.py"
+    destination = "/home/debian/history_bucket.py"
   }
 
   provisioner "file" {
@@ -109,6 +116,12 @@ resource "google_storage_bucket_iam_binding" "allow_vm_write_bucket" {
   members = [
     "serviceAccount:${google_service_account.python_vm_service_account.email}"
   ]
+}
+
+resource "google_storage_bucket_iam_member" "allow_vm_create_history" {
+  bucket = google_storage_bucket.history_bucket.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.python_vm_service_account.email}"
 }
 
 resource "google_project_iam_member" "allow_vm_firestore" {

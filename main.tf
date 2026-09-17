@@ -16,3 +16,9 @@ resource "google_storage_bucket_iam_member" "public_access" {
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }
+
+resource "google_storage_bucket" "history_bucket" {
+  name     = var.history_bucket_name
+  location = "us-east1"
+  uniform_bucket_level_access = true
+}

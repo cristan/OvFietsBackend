@@ -6,6 +6,8 @@ from firestore_history import load_monthly_capacity_cache, track_historic_capaci
     track_hourly_capacity, load_latest_hours_per_code, get_three_month_max, prune_old_months
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
+from datetime import datetime, timezone
+from history_bucket import Reading, queue_reading_for_hourly_upload, upload_parquet_files_of_finished_hours
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
     """
@@ -36,6 +38,7 @@ def receive_messages(socket: zmq.Socket):
                 capacity = int(json_data['extra']['rentalBikes'])
                 track_historic_capacity(location_code, capacity)
                 track_hourly_capacity(location_code, capacity)
+                queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity), datetime.now(timezone.utc))
 
                 three_month_max = get_three_month_max(location_code)
                 overview_set_capacity(location_code, json_data, three_month_max)
@@ -51,6 +54,7 @@ def save_and_upload():
     upload_combined_data()
     flush_pending_updates()
     prune_old_months()
+    upload_parquet_files_of_finished_hours(datetime.now(timezone.utc))
     write_timer = None
 
 def save_and_upload_delayed():
