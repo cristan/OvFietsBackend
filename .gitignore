@@ -1,9 +1,8 @@
 ### Mac OS ###
 .DS_Store
 
-### Terraform ###
+### Terraform / OpenTofu ###
 .terraform
-.terraform.lock.hcl
 .terraform.tfstate.lock.info
 terraform.tfstate
 terraform.tfstate.backup
