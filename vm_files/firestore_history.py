@@ -42,14 +42,14 @@ def get_three_month_max(code: str) -> int:
     return max((code_data.get(m, {}).get("max", 0) for m in months), default=0)
 
 def get_recent_months(n: int = 3, now: Optional[datetime] = None) -> list[str]:
-    now = now or datetime.utcnow()
+    now = now or datetime.now(timezone.utc)
     return [
         (now - relativedelta(months=i)).strftime("%Y-%m")
         for i in range(n)
     ]
 
 def get_current_month() -> str:
-    return datetime.utcnow().strftime("%Y-%m")  # e.g., "2025-06"
+    return datetime.now(timezone.utc).strftime("%Y-%m")  # e.g., "2025-06"
 
 def load_monthly_capacity_cache():
     print("Loading monthly capacity cache")
@@ -146,7 +146,7 @@ def flush_pending_updates():
             batch.set(ref, data)
 
         batch.commit()
-        print(f"✅ Flushed {len(pending_historic_updates)} historic document(s) and {len(pending_hourly_updates)} hourly updates at {datetime.utcnow().isoformat()}")
+        print(f"✅ Flushed {len(pending_historic_updates)} historic document(s) and {len(pending_hourly_updates)} hourly updates at {datetime.now(timezone.utc).isoformat()}")
 
         pending_historic_updates.clear()
         pending_hourly_updates.clear()
