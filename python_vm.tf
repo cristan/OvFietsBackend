@@ -23,7 +23,7 @@ resource "google_compute_instance" "python_vm" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "debian-cloud/debian-13"
       # 10 GB storage should be plenty, and keeps us in the free tier (limit: 30GB)
       size  = 10
     }
@@ -53,16 +53,16 @@ sudo rm -f /var/lib/man-db/auto-update
 PUBLIC_BUCKET_NAME=${var.public_bucket_name}
 export PUBLIC_BUCKET_NAME
 apt-get update
-apt-get install -y python3 python3-pip logrotate
-pip3 install --upgrade pip
+apt-get install -y python3 python3-venv logrotate
+python3 -m venv /opt/venv
 # TODO: Try pip install -r requirements.txt. This prevents having to note the dependencies twice.
-pip3 install pyzmq google-cloud-storage google-cloud-firestore python-dateutil
+/opt/venv/bin/pip install pyzmq google-cloud-storage google-cloud-firestore python-dateutil
 
 echo "Finished running startup script. Running the script."
 
 # Use a different log file for the actual script
 exec >> /var/log/zmq_subscriber.log 2>&1
-nohup python3 /home/debian/zmq_subscriber.py
+nohup /opt/venv/bin/python /home/debian/zmq_subscriber.py
 EOF
 
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
