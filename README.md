@@ -15,6 +15,11 @@ This is designed to be hosted as easily as possible, while reducing hosting cost
 
 Hosting is really easy: after setting up Google Cloud, you only need to do a `terraform apply` or `tofy apply` and a completely working backend will be deployed.
 
+The VM might not get redeployed after a code change, so in that case run
+```shell
+tofu apply -replace=google_compute_instance.python_vm
+```
+
 ## Checking its uptime ##
 For this, I've created the project [OvFietsUptimeChecker](https://github.com/cristan/OvFietsUptimeChecker). This regularly checks both that the call is up, as well as that the data is up-to-date.
 
