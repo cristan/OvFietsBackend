@@ -41,21 +41,26 @@ def create_parquet_file(readings: list[Reading]) -> bytes:
     pq.write_table(table, file, compression="gzip")
     return file.getvalue()
 
-def parquet_file_name(hour: datetime) -> str:
-    return hour.strftime("date=%Y-%m-%d/%H.parquet")
+def parquet_file_name(hour: datetime, uploaded_at: datetime) -> str:
+    return f"{hour.strftime('date=%Y-%m-%d/%H')}-{uploaded_at.strftime('%M')}.parquet"
 
 def take_readings_of_finished_hours(now: datetime) -> dict[datetime, list[Reading]]:
     with pending_readings_lock:
         finished_hours = [hour for hour in pending_readings_per_hour if hour < start_of_hour(now)]
         return {hour: pending_readings_per_hour.pop(hour) for hour in finished_hours}
 
-def upload_parquet_files_of_finished_hours(now: datetime):
-    readings_per_finished_hour = take_readings_of_finished_hours(now)
-    if not readings_per_finished_hour:
+def take_readings_of_all_hours() -> dict[datetime, list[Reading]]:
+    with pending_readings_lock:
+        taken_readings = dict(pending_readings_per_hour)
+        pending_readings_per_hour.clear()
+        return taken_readings
+
+def upload_parquet_files(readings_per_hour: dict[datetime, list[Reading]], uploaded_at: datetime):
+    if not readings_per_hour:
         return
 
     bucket = storage.Client().bucket(os.getenv("HISTORY_BUCKET_NAME"))
-    for hour, readings in readings_per_finished_hour.items():
-        file_name = parquet_file_name(hour)
+    for hour, readings in readings_per_hour.items():
+        file_name = parquet_file_name(hour, uploaded_at)
         bucket.blob(file_name).upload_from_string(create_parquet_file(readings))
         print(f"Uploaded {len(readings)} readings to {file_name}")

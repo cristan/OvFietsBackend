@@ -19,6 +19,13 @@ resource "google_compute_instance" "python_vm" {
 
   metadata = {
     ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
+
+    shutdown-script = <<-SHUTDOWN
+pkill -TERM -f zmq_subscriber.py
+while pgrep -f zmq_subscriber.py > /dev/null; do
+  sleep 1
+done
+SHUTDOWN
   }
 
   boot_disk {

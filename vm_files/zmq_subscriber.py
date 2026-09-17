@@ -1,5 +1,7 @@
 import gzip
 import json
+import signal
+import sys
 import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
@@ -7,7 +9,8 @@ from firestore_history import load_monthly_capacity_cache, track_historic_capaci
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 from datetime import datetime, timezone
-from history_bucket import Reading, queue_reading_for_hourly_upload, upload_parquet_files_of_finished_hours
+from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
+    take_readings_of_finished_hours, upload_parquet_files
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
     """
@@ -54,7 +57,8 @@ def save_and_upload():
     upload_combined_data()
     flush_pending_updates()
     prune_old_months()
-    upload_parquet_files_of_finished_hours(datetime.now(timezone.utc))
+    now = datetime.now(timezone.utc)
+    upload_parquet_files(take_readings_of_finished_hours(now), now)
     write_timer = None
 
 def save_and_upload_delayed():
@@ -63,6 +67,13 @@ def save_and_upload_delayed():
         write_timer.cancel()
     write_timer = threading.Timer(1.0, save_and_upload)
     write_timer.start()
+
+def upload_readings_of_unfinished_hour_and_exit(signal_number, frame):
+    print("Shutting down")
+    upload_parquet_files(take_readings_of_all_hours(), datetime.now(timezone.utc))
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, upload_readings_of_unfinished_hour_and_exit)
 
 # Main loop
 try:
