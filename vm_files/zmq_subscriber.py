@@ -70,6 +70,8 @@ def save_and_upload_delayed():
 
 def exit_on_shutdown(signal_number, frame):
     print("Shutting down")
+    # Raises SystemExit, which runs the finally block below, uploading any pending readings.
+    # Without it, SIGTERM would terminate the process on the spot.
     sys.exit(0)
 
 signal.signal(signal.SIGTERM, exit_on_shutdown)
