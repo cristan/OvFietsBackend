@@ -62,5 +62,5 @@ def upload_parquet_files(readings_per_hour: dict[datetime, list[Reading]], uploa
     bucket = storage.Client().bucket(os.getenv("HISTORY_BUCKET_NAME"))
     for hour, readings in readings_per_hour.items():
         file_name = parquet_file_name(hour, uploaded_at)
-        bucket.blob(file_name).upload_from_string(create_parquet_file(readings))
+        bucket.blob(file_name).upload_from_string(create_parquet_file(readings), content_type="application/vnd.apache.parquet")
         print(f"Uploaded {len(readings)} readings to {file_name}")
