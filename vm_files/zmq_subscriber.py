@@ -68,12 +68,11 @@ def save_and_upload_delayed():
     write_timer = threading.Timer(1.0, save_and_upload)
     write_timer.start()
 
-def upload_readings_of_unfinished_hour_and_exit(signal_number, frame):
+def exit_on_shutdown(signal_number, frame):
     print("Shutting down")
-    upload_parquet_files(take_readings_of_all_hours(), datetime.now(timezone.utc))
     sys.exit(0)
 
-signal.signal(signal.SIGTERM, upload_readings_of_unfinished_hour_and_exit)
+signal.signal(signal.SIGTERM, exit_on_shutdown)
 
 # Main loop
 try:
@@ -102,6 +101,7 @@ try:
 except KeyboardInterrupt:
     print("Interrupted by user.")
 finally:
+    upload_parquet_files(take_readings_of_all_hours(), datetime.now(timezone.utc))
     # Clean up resources
     if write_timer is not None:
         write_timer.cancel()
