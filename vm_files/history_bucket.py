@@ -13,6 +13,7 @@ class Reading(NamedTuple):
     code: str
     fetch_time: int
     rental_bikes: int
+    is_stale: bool
 
 parquet_columns = pa.schema([
     ("code", pa.string()),
@@ -55,12 +56,24 @@ def take_readings_of_all_hours() -> dict[datetime, list[Reading]]:
         pending_readings_per_hour.clear()
         return taken_readings
 
+def readings_per_file_name(readings_per_hour: dict[datetime, list[Reading]], uploaded_at: datetime) -> dict[str, list[Reading]]:
+    readings_per_file = {}
+    for hour, readings in readings_per_hour.items():
+        file_name = parquet_file_name(hour, uploaded_at)
+        readings_not_stale = [reading for reading in readings if not reading.is_stale]
+        stale_readings = [reading for reading in readings if reading.is_stale]
+        if readings_not_stale:
+            readings_per_file["readings/" + file_name] = readings_not_stale
+        if stale_readings:
+            readings_per_file["stale_readings/" + file_name] = stale_readings
+    return readings_per_file
+
 def upload_parquet_files(readings_per_hour: dict[datetime, list[Reading]], uploaded_at: datetime):
-    if not readings_per_hour:
+    readings_per_file = readings_per_file_name(readings_per_hour, uploaded_at)
+    if not readings_per_file:
         return
 
     bucket = storage.Client().bucket(os.getenv("HISTORY_BUCKET_NAME"))
-    for hour, readings in readings_per_hour.items():
-        file_name = parquet_file_name(hour, uploaded_at)
+    for file_name, readings in readings_per_file.items():
         bucket.blob(file_name).upload_from_string(create_parquet_file(readings), content_type="application/vnd.apache.parquet")
         print(f"Uploaded {len(readings)} readings to {file_name}")

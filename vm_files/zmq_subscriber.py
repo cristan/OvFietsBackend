@@ -61,7 +61,7 @@ def process_message(location_code: str, json_data: dict[str, Any], now: datetime
     capacity = int(json_data['extra']['rentalBikes'])
     track_historic_capacity(location_code, capacity)
     track_hourly_capacity(location_code, capacity)
-    queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity), now)
+    queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity, is_stale=False), now)
 
     three_month_max = get_three_month_max(location_code)
     overview_set_capacity(location_code, json_data, three_month_max)
@@ -77,6 +77,9 @@ def save_and_upload():
         new_rental_bikes = rental_bikes_missing_from_stale_batch(rental_bikes_per_code)
         if new_rental_bikes:
             print(f"The stale batch has locations the stored copy doesn't have yet: {new_rental_bikes}")
+        for location_code, json_data in messages:
+            stale_reading = Reading(location_code, json_data['extra']['fetchTime'], rental_bikes_per_code[location_code], is_stale=True)
+            queue_reading_for_hourly_upload(stale_reading, now)
     else:
         for location_code, json_data in messages:
             process_message(location_code, json_data, now)
