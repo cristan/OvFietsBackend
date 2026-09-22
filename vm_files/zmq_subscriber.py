@@ -9,6 +9,7 @@ from firestore_history import load_monthly_capacity_cache, track_historic_capaci
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 from datetime import datetime, timezone
+from typing import Any
 from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
     take_readings_of_finished_hours, upload_parquet_files
 
@@ -24,9 +25,12 @@ def create_socket(context: zmq.Context) -> zmq.Socket:
     socket.setsockopt_string(zmq.SUBSCRIBE, topic)
     return socket
 
+pending_messages_lock = threading.Lock()
+pending_messages: list[tuple[str, dict[str, Any]]] = []
+
 def receive_messages(socket: zmq.Socket):
     """
-    Handle incoming messages on the given socket and update combined_data.
+    Receive messages on the given socket and queue them for processing.
     """
     topic_received = socket.recv_string()
     while True:
@@ -38,26 +42,39 @@ def receive_messages(socket: zmq.Socket):
             location_code = topic_received.split("/")[-1]
             print(f"[{location_code}] Received {json_data['extra'].get('rentalBikes', 'unknown')} rentalBikes with fetchTime {json_data['extra']['fetchTime']}")
             if 'rentalBikes' in json_data['extra']:
-                capacity = int(json_data['extra']['rentalBikes'])
-                track_historic_capacity(location_code, capacity)
-                track_hourly_capacity(location_code, capacity)
-                queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity), datetime.now(timezone.utc))
-
-                three_month_max = get_three_month_max(location_code)
-                overview_set_capacity(location_code, json_data, three_month_max)
+                with pending_messages_lock:
+                    pending_messages.append((location_code, json_data))
 
             topic_received = socket.recv_string(flags=zmq.NOBLOCK)
         except zmq.Again:
             # No more messages available
             return
 
+def take_pending_messages() -> list[tuple[str, dict[str, Any]]]:
+    with pending_messages_lock:
+        taken_messages = list(pending_messages)
+        pending_messages.clear()
+        return taken_messages
+
+def process_message(location_code: str, json_data: dict[str, Any], now: datetime):
+    capacity = int(json_data['extra']['rentalBikes'])
+    track_historic_capacity(location_code, capacity)
+    track_hourly_capacity(location_code, capacity)
+    queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity), now)
+
+    three_month_max = get_three_month_max(location_code)
+    overview_set_capacity(location_code, json_data, three_month_max)
+
 write_timer = None
 def save_and_upload():
     global write_timer
+    now = datetime.now(timezone.utc)
+    for location_code, json_data in take_pending_messages():
+        process_message(location_code, json_data, now)
+    filter_old_entries()
     upload_combined_data()
     flush_pending_updates()
     prune_old_months()
-    now = datetime.now(timezone.utc)
     upload_parquet_files(take_readings_of_finished_hours(now), now)
     write_timer = None
 
@@ -85,7 +102,6 @@ try:
     while True:
         try:
             receive_messages(socket)
-            filter_old_entries()
             save_and_upload_delayed()
         except zmq.Again:
             print("No data received for 5 minutes. Reconnecting.")
