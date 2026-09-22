@@ -5,15 +5,16 @@ It pulls data from OpenOV, but with a few perks over directly using http://fiets
 
 - Is hosted over HTTPS
 - Automatically removes outdated entries
-- Half its size because it only hosts info needed for overviews + a detail link
+- About half the size, because it leaves out fields that are empty, redundant or internal
+- No bogus spikes: about 1 in 20 updates from the feed contains outdated bike counts for every location, so a location with 2 bikes can suddenly show 547. Those updates are ignored.
 - Data is delivered as a simple array, instead of a map with IDs
 
 Also, OpenOV isn’t thrilled about heavy traffic on their JSON (they provide open data, not hosting). They’d rather you use the ZeroMQ service bus and host it yourself, which is exactly what this project does.
 
 ## Hosting it ##
-This is designed to be hosted as easily as possible, while reducing hosting costs to zero when possible. That's why Google Cloud is chosen: services like AWS also have a free tier, but after a year you have to pay. This restriction doesn't apply for Google Cloud. No guarantees, but hosting this should cost well below €0,50 each month
+This is designed to be hosted as easily as possible, while reducing hosting costs to zero when possible. That's why Google Cloud is chosen: services like AWS also have a free tier, but after 6 months you have to pay. This restriction doesn't apply for Google Cloud. No guarantees, but hosting this should cost well below €0,50 each month
 
-Hosting is really easy: after setting up Google Cloud, you only need to do a `terraform apply` or `tofu apply` and a completely working backend will be deployed.
+Hosting is really easy: after setting up Google Cloud, do a `terraform apply` or `tofu apply`. It asks for your project ID and a name for a public and a private bucket, and deploys a completely working backend.
 
 The VM might not get redeployed after a code change, so in that case run
 ```shell
