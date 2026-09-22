@@ -97,6 +97,16 @@ EOF
   }
 
   provisioner "file" {
+    source      = "vm_files/stale_batch.py"
+    destination = "/home/debian/stale_batch.py"
+  }
+
+  provisioner "file" {
+    source      = "vm_files/stale_batch_rental_bikes.json"
+    destination = "/home/debian/stale_batch_rental_bikes.json"
+  }
+
+  provisioner "file" {
     source      = "vm_files/logrotate/zmq_subscriber"
     destination = "/home/debian/zmq_subscriber"
   }

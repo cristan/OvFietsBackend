@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
     take_readings_of_finished_hours, upload_parquet_files
+from stale_batch import is_stale_batch
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
     """
@@ -69,8 +70,13 @@ write_timer = None
 def save_and_upload():
     global write_timer
     now = datetime.now(timezone.utc)
-    for location_code, json_data in take_pending_messages():
-        process_message(location_code, json_data, now)
+    messages = take_pending_messages()
+    rental_bikes_per_code = {location_code: int(json_data['extra']['rentalBikes']) for location_code, json_data in messages}
+    if is_stale_batch(rental_bikes_per_code):
+        print(f"Ignored {len(messages)} messages: they are the stale batch")
+    else:
+        for location_code, json_data in messages:
+            process_message(location_code, json_data, now)
     filter_old_entries()
     upload_combined_data()
     flush_pending_updates()
@@ -93,12 +99,13 @@ def exit_on_shutdown(signal_number, frame):
 
 signal.signal(signal.SIGTERM, exit_on_shutdown)
 
+load_monthly_capacity_cache()
+load_latest_hours_per_code()
+
 # Main loop
 try:
     context = zmq.Context()
     socket = create_socket(context)
-    load_monthly_capacity_cache()
-    load_latest_hours_per_code()
     while True:
         try:
             receive_messages(socket)
