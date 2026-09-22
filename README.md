@@ -6,7 +6,6 @@ It pulls data from OpenOV, but with a few perks over directly using http://fiets
 - Is hosted over HTTPS
 - Automatically removes outdated entries
 - About half the size, because it leaves out fields that are empty, redundant or internal
-- No bogus spikes: about 1 in 20 updates from the feed contains outdated bike counts for every location, so a location with 2 bikes can suddenly show 547. Those updates are ignored.
 - Data is delivered as a simple array, instead of a map with IDs
 
 Also, OpenOV isn’t thrilled about heavy traffic on their JSON (they provide open data, not hosting). They’d rather you use the ZeroMQ service bus and host it yourself, which is exactly what this project does.
