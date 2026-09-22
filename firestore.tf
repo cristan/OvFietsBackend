@@ -44,7 +44,6 @@ resource "google_firestore_index" "code_timestamp_index" {
   }
 }
 
-// Needs a terraform/tofu import to overwrite the default one. Change imports.tf to get this to work.
 resource "google_firebaserules_release" "hourly_capacity_public_access" {
   name         = "cloud.firestore"
   project      = var.project_id
