@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
     take_readings_of_finished_hours, upload_parquet_files
-from stale_batch import is_stale_batch, rental_bikes_missing_from_stale_batch
+from stale_batch import is_stale_batch, is_fully_stale_batch, rental_bikes_missing_from_stale_batch
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
     """
@@ -75,7 +75,7 @@ def save_and_upload():
     if is_stale_batch(rental_bikes_per_code):
         print(f"Ignored {len(messages)} messages: they are the stale batch")
         new_rental_bikes = rental_bikes_missing_from_stale_batch(rental_bikes_per_code)
-        if new_rental_bikes:
+        if new_rental_bikes and is_fully_stale_batch(rental_bikes_per_code):
             print(f"The stale batch has locations the stored copy doesn't have yet: {new_rental_bikes}")
         for location_code, json_data in messages:
             stale_reading = Reading(location_code, json_data['extra']['fetchTime'], rental_bikes_per_code[location_code], is_stale=True)
