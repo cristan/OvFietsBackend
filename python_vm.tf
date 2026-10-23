@@ -64,8 +64,12 @@ export HISTORY_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-venv logrotate
 python3 -m venv /opt/venv
-# TODO: Try pip install -r requirements.txt. This prevents having to note the dependencies twice.
-/opt/venv/bin/pip install pyzmq google-cloud-storage google-cloud-firestore python-dateutil pyarrow
+# On the first boot, the startup script runs while the provisioners are still copying the files.
+# requirements.txt only appears in /opt once every file has been copied.
+until [ -f /opt/requirements.txt ]; do
+  sleep 1
+done
+/opt/venv/bin/pip install --require-hashes -r /opt/requirements.txt
 
 echo "Finished running startup script. Running the script."
 
@@ -76,6 +80,11 @@ EOF
 
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
   # The better solution is to separate the architecture from the code. PR's welcome.
+  provisioner "file" {
+    source      = "requirements.txt"
+    destination = "/home/debian/requirements.txt"
+  }
+
   provisioner "file" {
     source      = "vm_files/zmq_subscriber.py"
     destination = "/home/debian/zmq_subscriber.py"
@@ -115,6 +124,7 @@ EOF
     inline = [
       "sudo mv /home/debian/zmq_subscriber /etc/logrotate.d/zmq_subscriber",
       "sudo chown root:root /etc/logrotate.d/zmq_subscriber",
+      "sudo mv /home/debian/requirements.txt /opt/requirements.txt",
     ]
   }
 
