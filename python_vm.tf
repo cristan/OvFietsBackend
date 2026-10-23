@@ -69,7 +69,7 @@ python3 -m venv /opt/venv
 until [ -f /opt/requirements.txt ]; do
   sleep 1
 done
-/opt/venv/bin/pip install -r /opt/requirements.txt
+/opt/venv/bin/pip install --require-hashes -r /opt/requirements.txt
 
 echo "Finished running startup script. Running the script."
 
