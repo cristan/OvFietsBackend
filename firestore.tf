@@ -13,7 +13,7 @@ resource "google_firestore_field" "hourly_capacity_ttl" {
   ttl_config { }
 }
 
-resource "google_firebaserules_ruleset" "hourly_capacity_public_access" {
+resource "google_firebaserules_ruleset" "firestore_rules" {
   project = var.project_id
   provider    = google-beta
 
@@ -29,23 +29,18 @@ resource "google_firebaserules_ruleset" "hourly_capacity_public_access" {
   ]
 }
 
-resource "google_firestore_index" "code_timestamp_index" {
-  project    = var.project_id
-  collection = "hourly_location_capacity"
-
-  fields {
-    field_path = "code"
-    order      = "ASCENDING"
-  }
-
-  fields {
-    field_path = "timestamp"
-    order      = "ASCENDING"
-  }
-}
-
-resource "google_firebaserules_release" "hourly_capacity_public_access" {
+resource "google_firebaserules_release" "firestore_rules" {
   name         = "cloud.firestore"
   project      = var.project_id
-  ruleset_name = google_firebaserules_ruleset.hourly_capacity_public_access.name
+  ruleset_name = google_firebaserules_ruleset.firestore_rules.name
+}
+
+moved {
+  from = google_firebaserules_ruleset.hourly_capacity_public_access
+  to   = google_firebaserules_ruleset.firestore_rules
+}
+
+moved {
+  from = google_firebaserules_release.hourly_capacity_public_access
+  to   = google_firebaserules_release.firestore_rules
 }

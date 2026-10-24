@@ -8,3 +8,6 @@ terraform.tfstate
 terraform.tfstate.backup
 terraform.tfvars
 .claude/settings.local.json
+
+### Python ###
+__pycache__/
