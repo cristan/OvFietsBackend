@@ -7,7 +7,7 @@ import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
     track_hourly_capacity, load_latest_hours_per_code, get_three_month_max, prune_old_months
-from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
+from overview_bucket import filter_old_entries, publish_combined_data, overview_set_capacity
 import threading
 from datetime import datetime, timezone
 from typing import Any
@@ -89,7 +89,7 @@ def save_and_upload():
         for location_code, json_data in messages:
             process_message(location_code, json_data, now)
     filter_old_entries()
-    upload_combined_data()
+    publish_combined_data()
     if keeps_history:
         flush_pending_updates()
     prune_old_months()
