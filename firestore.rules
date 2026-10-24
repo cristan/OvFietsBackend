@@ -4,5 +4,32 @@ service cloud.firestore {
     match /hourly_location_capacity/{doc} {
       allow read: if true;
     }
+
+    match /usage_counts/{usageCountId} {
+      allow create: if isUsageCountId(usageCountId)
+        && hasDateOfToday(usageCountId)
+        && request.resource.data == {'count': 1};
+      allow update: if isUsageCountId(usageCountId)
+        && hasDateOfToday(usageCountId)
+        && request.resource.data == {'count': resource.data.count + 1};
+    }
+
+    match /warnings/{warningId} {
+      allow create: if warningId.matches('[A-Za-z0-9]{20}')
+        && request.resource.data.keys().hasOnly(['message', 'platform', 'appVersion'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 100
+        && request.resource.data.platform in ['android', 'ios']
+        && request.resource.data.appVersion.matches('[0-9]{1,3}([.][0-9]{1,3}){1,2}');
+    }
+
+    function isUsageCountId(usageCountId) {
+      return usageCountId.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}_(android|ios)_[0-9]{1,3}([.][0-9]{1,3}){1,2}_(app_start|details_opened)');
+    }
+
+    function hasDateOfToday(usageCountId) {
+      let yearMonthDay = usageCountId.split('_')[0].split('-');
+      return timestamp.date(int(yearMonthDay[0]), int(yearMonthDay[1]), int(yearMonthDay[2])) == request.time.date();
+    }
   }
 }

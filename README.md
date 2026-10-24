@@ -13,7 +13,7 @@ Also, OpenOV isn’t thrilled about heavy traffic on their JSON (they provide op
 ## Hosting it ##
 This is designed to be hosted as easily as possible, while reducing hosting costs to zero when possible. That's why Google Cloud is chosen: services like AWS also have a free tier, but after 6 months you have to pay. This restriction doesn't apply for Google Cloud. No guarantees, but hosting this should cost well below €0,50 each month
 
-Hosting is really easy: after setting up Google Cloud, do a `terraform apply` or `tofu apply`. It asks for your project ID and a name for a public and a private bucket, and deploys a completely working backend.
+Hosting is really easy: after setting up Google Cloud, do a `terraform apply` or `tofu apply`. It asks for your project ID, your billing account ID (for a budget alert) and a name for a public and a private bucket, and deploys a completely working backend.
 
 The VM might not get redeployed after a code change, so in that case run
 ```shell
