@@ -19,13 +19,6 @@ resource "google_compute_instance" "python_vm" {
 
   metadata = {
     ssh-keys = "debian:${tls_private_key.vm_ssh_key.public_key_openssh}"
-
-    shutdown-script = <<-SHUTDOWN
-pkill -TERM -f zmq_subscriber.py
-while pgrep -f zmq_subscriber.py > /dev/null; do
-  sleep 1
-done
-SHUTDOWN
   }
 
   boot_disk {
@@ -57,10 +50,6 @@ echo "Starting startup script"
 # Disable man updating to remove the slow "Processing triggers for man-db"
 sudo rm -f /var/lib/man-db/auto-update
 
-PUBLIC_BUCKET_NAME=${var.public_bucket_name}
-export PUBLIC_BUCKET_NAME
-HISTORY_BUCKET_NAME=${var.history_bucket_name}
-export HISTORY_BUCKET_NAME
 apt-get update
 apt-get install -y python3 python3-venv logrotate
 python3 -m venv /opt/venv
@@ -69,9 +58,16 @@ python3 -m venv /opt/venv
 
 echo "Finished running startup script. Running the script."
 
-# Use a different log file for the actual script
-exec >> /var/log/zmq_subscriber.log 2>&1
-nohup /opt/venv/bin/python /home/debian/zmq_subscriber.py
+systemd-run --unit=zmq_subscriber \
+  --setenv=PUBLIC_BUCKET_NAME=${var.public_bucket_name} \
+  --setenv=HISTORY_BUCKET_NAME=${var.history_bucket_name} \
+  --property=StandardOutput=append:/var/log/zmq_subscriber.log \
+  --property=After=network.target \
+  --property=Restart=always \
+  --property=RestartSec=1min \
+  --property=RestartSteps=5 \
+  --property=RestartMaxDelaySec=1h \
+  /opt/venv/bin/python /home/debian/zmq_subscriber.py
 EOF
 
   # Note that the VM won't redeploy when files change, so for now, you need to for example manually delete your VM to deploy the changed file.
