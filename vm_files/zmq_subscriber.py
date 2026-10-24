@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
     take_readings_of_finished_hours, upload_parquet_files
+from history_files import load_recent_history, track_rental_bikes, publish_history
 from stale_batch import is_stale_batch, is_fully_stale_batch, rental_bikes_missing_from_stale_batch
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
@@ -62,6 +63,7 @@ def process_message(location_code: str, json_data: dict[str, Any], now: datetime
     track_historic_capacity(location_code, capacity)
     track_hourly_capacity(location_code, capacity)
     queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity, is_stale=False), now)
+    track_rental_bikes(location_code, json_data['extra']['fetchTime'], capacity)
 
     three_month_max = get_three_month_max(location_code)
     overview_set_capacity(location_code, json_data, three_month_max)
@@ -88,6 +90,7 @@ def save_and_upload():
     flush_pending_updates()
     prune_old_months()
     upload_parquet_files(take_readings_of_finished_hours(now), now)
+    publish_history(int(now.timestamp()) // 60)
     write_timer = None
 
 def save_and_upload_delayed():
@@ -107,6 +110,7 @@ signal.signal(signal.SIGTERM, exit_on_shutdown)
 
 load_monthly_capacity_cache()
 load_latest_hours_per_code()
+load_recent_history()
 
 # Main loop
 try:

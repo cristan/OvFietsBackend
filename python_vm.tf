@@ -102,6 +102,16 @@ EOF
   }
 
   provisioner "file" {
+    source      = "vm_files/history_changes.py"
+    destination = "/home/debian/history_changes.py"
+  }
+
+  provisioner "file" {
+    source      = "vm_files/history_files.py"
+    destination = "/home/debian/history_files.py"
+  }
+
+  provisioner "file" {
     source      = "vm_files/stale_batch_rental_bikes.json"
     destination = "/home/debian/stale_batch_rental_bikes.json"
   }
