@@ -2,10 +2,6 @@ import os
 import time
 from typing import Any
 
-# Directory to store the final JSON
-base_directory = "OVfiets"
-os.makedirs(base_directory, exist_ok=True)
-
 combined_data = {}
 
 import io
