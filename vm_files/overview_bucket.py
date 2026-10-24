@@ -2,10 +2,6 @@ import os
 import time
 from typing import Any
 
-# Directory to store the final JSON
-base_directory = "OVfiets"
-os.makedirs(base_directory, exist_ok=True)
-
 combined_data = {}
 
 import io
@@ -13,34 +9,45 @@ import gzip
 import json
 from google.cloud import storage
 
-def upload_gzipped_json(data, destination_blob_name: str):
+def create_gzipped_json(locations: list[dict[str, Any]]) -> bytes:
+    # Convert the data to JSON
+    json_bytes = json.dumps(
+        locations, ensure_ascii=False
+    ).encode("utf-8")
+
+    # Gzip in memory
+    return gzip.compress(json_bytes)
+
+def upload_gzipped_json(gzipped_json: bytes, destination_blob_name: str):
     client = storage.Client()
     bucket_name = os.getenv("PUBLIC_BUCKET_NAME")
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
-
-    # Convert the data to JSON
-    json_bytes = json.dumps(
-        list(data.values()), ensure_ascii=False
-    ).encode("utf-8")
-
-    # Gzip in memory
-    gzipped_buffer = io.BytesIO()
-    with gzip.GzipFile(fileobj=gzipped_buffer, mode="wb") as f_out:
-        f_out.write(json_bytes)
-    gzipped_buffer.seek(0)  # rewind to the beginning
 
     # Upload to GCS
     blob.cache_control = "no-cache, max-age=0"
     blob.content_encoding = "gzip"
     blob.content_type = "application/json"
     blob.metadata = {"minimum-app-compatibility": "1"}
-    blob.upload_from_file(gzipped_buffer, rewind=True)
+    blob.upload_from_file(io.BytesIO(gzipped_json))
 
     print(f"Uploaded {destination_blob_name} to {bucket_name} (gzip-compressed)")
 
-def upload_combined_data():
-    upload_gzipped_json(combined_data, "locations.json")
+def write_gzipped_json(gzipped_json: bytes, path: str):
+    temporary_path = path + ".tmp"
+    with open(temporary_path, "wb") as file:
+        file.write(gzipped_json)
+    os.replace(temporary_path, path)
+
+    print(f"Wrote {path}")
+
+def publish_combined_data():
+    gzipped_json = create_gzipped_json(list(combined_data.values()))
+    public_directory = os.getenv("PUBLIC_DIRECTORY")
+    if public_directory is None:
+        upload_gzipped_json(gzipped_json, "locations.json")
+    else:
+        write_gzipped_json(gzipped_json, os.path.join(public_directory, "locations.json.gz"))
 
 def filter_old_entries():
     twoWeeksAgo = int(time.time()) - (14 * 24 * 60 * 60)

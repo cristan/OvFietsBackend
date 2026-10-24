@@ -1,18 +1,21 @@
 import gzip
 import json
+import os
 import signal
 import sys
 import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
     track_hourly_capacity, load_latest_hours_per_code, get_three_month_max, prune_old_months
-from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
+from overview_bucket import filter_old_entries, publish_combined_data, overview_set_capacity
 import threading
 from datetime import datetime, timezone
 from typing import Any
 from history_bucket import Reading, queue_reading_for_hourly_upload, take_readings_of_all_hours, \
     take_readings_of_finished_hours, upload_parquet_files
 from stale_batch import is_stale_batch, is_fully_stale_batch, rental_bikes_missing_from_stale_batch
+
+keeps_history = "HISTORY_BUCKET_NAME" in os.environ
 
 def create_socket(context: zmq.Context) -> zmq.Socket:
     """
@@ -60,8 +63,9 @@ def take_pending_messages() -> list[tuple[str, dict[str, Any]]]:
 def process_message(location_code: str, json_data: dict[str, Any], now: datetime):
     capacity = int(json_data['extra']['rentalBikes'])
     track_historic_capacity(location_code, capacity)
-    track_hourly_capacity(location_code, capacity)
-    queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity, is_stale=False), now)
+    if keeps_history:
+        track_hourly_capacity(location_code, capacity)
+        queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity, is_stale=False), now)
 
     three_month_max = get_three_month_max(location_code)
     overview_set_capacity(location_code, json_data, three_month_max)
@@ -77,15 +81,17 @@ def save_and_upload():
         new_rental_bikes = rental_bikes_missing_from_stale_batch(rental_bikes_per_code)
         if new_rental_bikes and is_fully_stale_batch(rental_bikes_per_code):
             print(f"The stale batch has locations the stored copy doesn't have yet: {new_rental_bikes}")
-        for location_code, json_data in messages:
-            stale_reading = Reading(location_code, json_data['extra']['fetchTime'], rental_bikes_per_code[location_code], is_stale=True)
-            queue_reading_for_hourly_upload(stale_reading, now)
+        if keeps_history:
+            for location_code, json_data in messages:
+                stale_reading = Reading(location_code, json_data['extra']['fetchTime'], rental_bikes_per_code[location_code], is_stale=True)
+                queue_reading_for_hourly_upload(stale_reading, now)
     else:
         for location_code, json_data in messages:
             process_message(location_code, json_data, now)
     filter_old_entries()
-    upload_combined_data()
-    flush_pending_updates()
+    publish_combined_data()
+    if keeps_history:
+        flush_pending_updates()
     prune_old_months()
     upload_parquet_files(take_readings_of_finished_hours(now), now)
     write_timer = None
@@ -105,8 +111,9 @@ def exit_on_shutdown(signal_number, frame):
 
 signal.signal(signal.SIGTERM, exit_on_shutdown)
 
-load_monthly_capacity_cache()
-load_latest_hours_per_code()
+if keeps_history:
+    load_monthly_capacity_cache()
+    load_latest_hours_per_code()
 
 # Main loop
 try:

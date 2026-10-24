@@ -1,10 +1,10 @@
+import functools
 import threading
 from typing import Any, Dict, Optional
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
-db = firestore.Client()
 flush_lock = threading.Lock()
 
 # code -> month -> stats
@@ -14,9 +14,13 @@ pending_historic_updates = {}
 hourly_first_seen_cache = {} # code => the last hour for which we have set `min`: the first value we have received for this location
 pending_hourly_updates = {}
 
+@functools.cache
+def firestore_client() -> firestore.Client:
+    return firestore.Client()
+
 def load_latest_hours_per_code():
     print("Loading hourly capacity cache")
-    snapshot = db.collection("hourly_location_capacity").stream()
+    snapshot = firestore_client().collection("hourly_location_capacity").stream()
 
     latest_per_code: Dict[str, str] = {}
 
@@ -54,7 +58,7 @@ def get_current_month() -> str:
 def load_monthly_capacity_cache():
     print("Loading monthly capacity cache")
     months = get_recent_months(3)
-    snapshot = db.collection("monthly_location_stats") \
+    snapshot = firestore_client().collection("monthly_location_stats") \
         .where("month", "in", months) \
         .stream()
 
@@ -132,17 +136,17 @@ def flush_pending_updates():
         if not pending_historic_updates and not pending_hourly_updates:
             return
 
-        batch = db.batch()
+        batch = firestore_client().batch()
 
         # Monthly updates
         for code, data in pending_historic_updates.items():
             doc_id = f"{code}_{data['month']}"
-            ref = db.collection("monthly_location_stats").document(doc_id)
+            ref = firestore_client().collection("monthly_location_stats").document(doc_id)
             batch.set(ref, data)
 
         # Hourly updates
         for doc_id, data in pending_hourly_updates.items():
-            ref = db.collection("hourly_location_capacity").document(doc_id)
+            ref = firestore_client().collection("hourly_location_capacity").document(doc_id)
             batch.set(ref, data)
 
         batch.commit()
