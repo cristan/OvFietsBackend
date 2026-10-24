@@ -29,21 +29,6 @@ resource "google_firebaserules_ruleset" "firestore_rules" {
   ]
 }
 
-resource "google_firestore_index" "code_timestamp_index" {
-  project    = var.project_id
-  collection = "hourly_location_capacity"
-
-  fields {
-    field_path = "code"
-    order      = "ASCENDING"
-  }
-
-  fields {
-    field_path = "timestamp"
-    order      = "ASCENDING"
-  }
-}
-
 resource "google_firebaserules_release" "firestore_rules" {
   name         = "cloud.firestore"
   project      = var.project_id

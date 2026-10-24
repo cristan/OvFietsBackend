@@ -5,7 +5,7 @@ import sys
 import time
 import zmq
 from firestore_history import load_monthly_capacity_cache, track_historic_capacity, flush_pending_updates, \
-    track_hourly_capacity, load_latest_hours_per_code, get_three_month_max, prune_old_months
+    get_three_month_max, prune_old_months
 from overview_bucket import filter_old_entries, upload_combined_data, overview_set_capacity
 import threading
 from datetime import datetime, timezone
@@ -61,7 +61,6 @@ def take_pending_messages() -> list[tuple[str, dict[str, Any]]]:
 def process_message(location_code: str, json_data: dict[str, Any], now: datetime):
     capacity = int(json_data['extra']['rentalBikes'])
     track_historic_capacity(location_code, capacity)
-    track_hourly_capacity(location_code, capacity)
     queue_reading_for_hourly_upload(Reading(location_code, json_data['extra']['fetchTime'], capacity, is_stale=False), now)
     track_rental_bikes(location_code, json_data['extra']['fetchTime'], capacity)
 
@@ -109,7 +108,6 @@ def exit_on_shutdown(signal_number, frame):
 signal.signal(signal.SIGTERM, exit_on_shutdown)
 
 load_monthly_capacity_cache()
-load_latest_hours_per_code()
 load_recent_history()
 
 # Main loop
