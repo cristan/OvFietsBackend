@@ -20,6 +20,15 @@ The VM might not get redeployed after a code change, so in that case run
 tofu apply -replace=google_compute_instance.python_vm
 ```
 
+## Hosting it with Docker ##
+If you'd rather not use Google Cloud, run
+```shell
+docker compose up -d
+```
+The first time, this builds the image before starting. Once it's running, the data is available at http://localhost:8080/locations.json within a minute. This serves plain HTTP, so put your own HTTPS in front of it when you make it public.
+
+Unlike the Google Cloud version, this keeps no history, so a location's maximum capacity only counts the bikes seen since the containers last started.
+
 ## Checking its uptime ##
 For this, I've created the project [OvFietsUptimeChecker](https://github.com/cristan/OvFietsUptimeChecker). This regularly checks both that the call is up, as well as that the data is up-to-date.
 
