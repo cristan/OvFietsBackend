@@ -34,7 +34,7 @@ def upload_gzipped_json(data, destination_blob_name: str):
     blob.cache_control = "no-cache, max-age=0"
     blob.content_encoding = "gzip"
     blob.content_type = "application/json"
-    blob.metadata = {"minimum-app-compatibility": "1"}
+    blob.metadata = {"minimum-app-compatibility": "2"}
     blob.upload_from_file(gzipped_buffer, rewind=True)
 
     print(f"Uploaded {destination_blob_name} to {bucket_name} (gzip-compressed)")
